@@ -1,0 +1,152 @@
+const { Telegraf } = require('telegraf');
+const config = require('./config');
+const BotService = require('./services/botService');
+const CommandHandler = require('./handlers/commandHandler');
+const RateLimiter = require('./utils/rateLimiter');
+const healthServer = require('./health');
+
+class TelegramBot {
+  constructor() {
+    this.bot = new Telegraf(config.botToken);
+    this.botService = new BotService();
+    this.commandHandler = new CommandHandler(this.botService);
+    this.rateLimiter = new RateLimiter(config.maxRequestsPerMinute);
+    
+    this.setupMiddlewares();
+    this.setupCommands();
+    this.setupErrorHandling();
+  }
+
+  setupMiddlewares() {
+    // Rate limiting middleware
+    this.bot.use(async (ctx, next) => {
+      const userId = ctx.from?.id;
+      if (!userId) return next();
+      
+      try {
+        await this.rateLimiter.consume(userId.toString());
+        return next();
+      } catch (error) {
+        if (error.msBeforeNext) {
+          const seconds = Math.ceil(error.msBeforeNext / 1000);
+          await ctx.reply(`⏳ Rate limit exceeded. Please wait ${seconds} seconds before making another request.`);
+        }
+        return;
+      }
+    });
+
+    // Logging middleware
+    this.bot.use(async (ctx, next) => {
+      const userId = ctx.from?.id;
+      const username = ctx.from?.username;
+      const command = ctx.message?.text?.split(' ')[0];
+      
+      console.log(`[${new Date().toISOString()}] User: ${username || userId} | Command: ${command || 'N/A'}`);
+      return next();
+    });
+  }
+
+  setupCommands() {
+    // Start command
+    this.bot.start((ctx) => {
+      const welcomeMessage = `🤖 Welcome to Content Creator Bot!
+
+Available Commands:
+/start - Show this welcome message
+/help - Show all commands with examples
+
+Content Generation:
+/script <topic> [style] - Generate a full script
+/shorts <topic> [style] - Generate shorts/reels script
+/title <topic> - Generate engaging titles
+/thumbnail <topic> - Generate thumbnail ideas
+/seo <topic> - Generate SEO optimization tips
+/idea - Get random content ideas
+
+Examples:
+/script artificial intelligence cinematic
+/shorts climate change
+/title future of education
+
+📝 Note: You can add style parameters like 'cinematic', 'mystery', or 'philosophical' to /script and /shorts commands.`;
+      
+      ctx.reply(welcomeMessage);
+    });
+
+    // Help command
+    this.bot.help((ctx) => {
+      const helpMessage = `📚 COMMAND REFERENCE
+
+1. /script <topic> [style]
+   Generates a complete video script.
+   Example: /script "AI in healthcare" cinematic
+
+2. /shorts <topic> [style]
+   Generates a short-form content script.
+   Example: /shorts "quantum computing"
+
+3. /title <topic>
+   Generates 5 engaging title options.
+   Example: /title "renewable energy"
+
+4. /thumbnail <topic>
+   Suggests thumbnail design ideas.
+   Example: /thumbnail "space exploration"
+
+5. /seo <topic>
+   Provides SEO optimization tips.
+   Example: /seo "digital marketing"
+
+6. /idea
+   Suggests random content ideas.
+
+⚙️ Style Parameters (for /script and /shorts):
+   • cinematic - Dramatic, visual storytelling
+   • mystery - Suspenseful, intriguing
+   • philosophical - Deep, thoughtful analysis
+
+📊 Rate Limit: ${config.maxRequestsPerMinute} requests per minute`;
+      
+      ctx.reply(helpMessage);
+    });
+
+    // Command handlers
+    this.bot.command('script', (ctx) => this.commandHandler.handleScript(ctx));
+    this.bot.command('shorts', (ctx) => this.commandHandler.handleShorts(ctx));
+    this.bot.command('title', (ctx) => this.commandHandler.handleTitle(ctx));
+    this.bot.command('thumbnail', (ctx) => this.commandHandler.handleThumbnail(ctx));
+    this.bot.command('seo', (ctx) => this.commandHandler.handleSeo(ctx));
+    this.bot.command('idea', (ctx) => this.commandHandler.handleIdea(ctx));
+
+    // Handle any other text
+    this.bot.on('text', (ctx) => {
+      ctx.reply("I only understand specific commands. Use /help to see available commands.");
+    });
+  }
+
+  setupErrorHandling() {
+    this.bot.catch((err, ctx) => {
+      console.error(`[ERROR] ${err.message}`, err);
+      ctx.reply('❌ An error occurred. Please try again later.');
+    });
+  }
+
+  async start() {
+    try {
+      console.log('🤖 Starting Telegram Bot...');
+      await this.bot.launch();
+      console.log('✅ Bot is running!');
+      
+      // Enable graceful stop
+      process.once('SIGINT', () => this.bot.stop('SIGINT'));
+      process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+    } catch (error) {
+      console.error('Failed to start bot:', error);
+      process.exit(1);
+    }
+  }
+}
+
+// Start the bot
+const bot = new TelegramBot();
+bot.start();
