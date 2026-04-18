@@ -6,13 +6,54 @@
 2. Git installed on PythonAnywhere (available by default)
 3. Node.js 18+ (PythonAnywhere supports Node.js via their "Web apps" feature)
 
+## Important: Node.js on PythonAnywhere
+
+PythonAnywhere may not have Node.js/npm installed by default. Here's how to install it:
+
+### Option A: Install Node.js via Node Version Manager (nvm)
+
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Reload shell
+source ~/.bashrc
+
+# Install Node.js 18 (LTS)
+nvm install 18
+nvm use 18
+
+# Verify installation
+node --version
+npm --version
+```
+
+### Option B: Use PythonAnywhere's Node.js (if available)
+
+Some PythonAnywhere instances have Node.js pre-installed. Check with:
+
+```bash
+which node
+which npm
+```
+
+### Option C: Use system Node.js (if available)
+
+```bash
+# Check available versions
+nodejs --version
+
+# If only nodejs is available, create symlink
+sudo ln -s /usr/bin/nodejs /usr/bin/node
+```
+
 ## Deployment Steps
 
 ### 1. Clone the Repository
 
 ```bash
 cd ~
-git clone https://github.com/your-username/telegram-longchat-bot.git
+git clone https://github.com/yuggu7665-beep/telegram-longchat-bot.git
 cd telegram-longchat-bot
 ```
 
@@ -22,23 +63,40 @@ cd telegram-longchat-bot
 npm install --omit=dev
 ```
 
+If `npm` is not found, install Node.js first using Option A above.
+
 ### 3. Set Environment Variables
 
-Create a `.env` file in the project root:
+PythonAnywhere requires environment variables to be set in the Web app configuration. Use these exact values from your .env file:
 
-```bash
-nano .env
-```
-
-Add the following (replace with your actual values):
+**Required Environment Variables:**
 
 ```
-BOT_TOKEN=your_telegram_bot_token_here
-LONGCHAT_API_KEY=your_longchat_api_key_here
+BOT_TOKEN=8754260621:AAEgftJZ1Z-1DyRtF2599UF37FoK0itm9lk
+LONGCHAT_API_KEY=ak_24e4WW3Bn3tf1vj2zR9yR2C01qN13
+LONGCHAT_API_URL=https://api.longchat.ai/v1/chat/completions
 NODE_ENV=production
 PORT=8080
 ALWAYS_START_SERVER=true
+MAX_REQUESTS_PER_MINUTE=5
+MAX_HISTORY_STORAGE=10
+OUTPUT_DIR=./outputs
 ```
+
+**How to set them in PythonAnywhere:**
+
+1. Go to your Web app configuration page
+2. Scroll to "Environment variables" section
+3. Add each variable individually:
+   - Name: `BOT_TOKEN`, Value: `8754260621:AAEgftJZ1Z-1DyRtF2599UF37FoK0itm9lk`
+   - Name: `LONGCHAT_API_KEY`, Value: `ak_24e4WW3Bn3tf1vj2zR9yR2C01qN13`
+   - Name: `LONGCHAT_API_URL`, Value: `https://api.longchat.ai/v1/chat/completions`
+   - Name: `NODE_ENV`, Value: `production`
+   - Name: `PORT`, Value: `8080`
+   - Name: `ALWAYS_START_SERVER`, Value: `true`
+   - Name: `MAX_REQUESTS_PER_MINUTE`, Value: `5`
+   - Name: `MAX_HISTORY_STORAGE`, Value: `10`
+   - Name: `OUTPUT_DIR`, Value: `./outputs`
 
 ### 4. Configure PythonAnywhere Web App
 
@@ -71,11 +129,15 @@ if project_home not in sys.path:
     sys.path.insert(0, project_home)
 
 # Set environment variables
-os.environ['BOT_TOKEN'] = 'your_telegram_bot_token_here'
-os.environ['LONGCHAT_API_KEY'] = 'your_longchat_api_key_here'
+os.environ['BOT_TOKEN'] = '8754260621:AAEgftJZ1Z-1DyRtF2599UF37FoK0itm9lk'
+os.environ['LONGCHAT_API_KEY'] = 'ak_24e4WW3Bn3tf1vj2zR9yR2C01qN13'
+os.environ['LONGCHAT_API_URL'] = 'https://api.longchat.ai/v1/chat/completions'
 os.environ['NODE_ENV'] = 'production'
 os.environ['PORT'] = '8080'
 os.environ['ALWAYS_START_SERVER'] = 'true'
+os.environ['MAX_REQUESTS_PER_MINUTE'] = '5'
+os.environ['MAX_HISTORY_STORAGE'] = '10'
+os.environ['OUTPUT_DIR'] = './outputs'
 
 # Start the Node.js application
 import subprocess
@@ -118,11 +180,15 @@ os.chdir('/home/yourusername/telegram-longchat-bot')
 
 # Set environment variables
 os.environ.update({
-    'BOT_TOKEN': 'your_actual_bot_token',
-    'LONGCHAT_API_KEY': 'your_actual_api_key',
+    'BOT_TOKEN': '8754260621:AAEgftJZ1Z-1DyRtF2599UF37FoK0itm9lk',
+    'LONGCHAT_API_KEY': 'ak_24e4WW3Bn3tf1vj2zR9yR2C01qN13',
+    'LONGCHAT_API_URL': 'https://api.longchat.ai/v1/chat/completions',
     'NODE_ENV': 'production',
     'PORT': '8080',
-    'ALWAYS_START_SERVER': 'true'
+    'ALWAYS_START_SERVER': 'true',
+    'MAX_REQUESTS_PER_MINUTE': '5',
+    'MAX_HISTORY_STORAGE': '10',
+    'OUTPUT_DIR': './outputs'
 })
 
 # Start Node.js process
@@ -152,10 +218,11 @@ Visit your PythonAnywhere domain:
 
 ### Common Issues
 
-1. **Port already in use**: Ensure `PORT` environment variable matches PythonAnywhere's internal port (usually 8080)
-2. **Missing dependencies**: Run `npm install` in the project directory
-3. **Environment variables not set**: Double-check they're set in the WSGI file or PythonAnywhere's Web app configuration
-4. **Bot not responding**: Check Telegram Bot token is correct and the bot is started
+1. **"bash: npm: command not found"**: Install Node.js using Option A above
+2. **Port already in use**: Ensure `PORT` environment variable matches PythonAnywhere's internal port (usually 8080)
+3. **Missing dependencies**: Run `npm install` in the project directory
+4. **Environment variables not set**: Double-check they're set in the WSGI file or PythonAnywhere's Web app configuration
+5. **Bot not responding**: Check Telegram Bot token is correct and the bot is started
 
 ### Checking if Bot is Running
 
@@ -184,3 +251,31 @@ node pythonanywhere_start.js
   - Sleeps after inactivity
 - For 24/7 bot operation, consider upgrading to paid plan or using a different service
 - The bot will automatically restart when the web app reloads
+- All environment variables from your local `.env` file have been pre-configured in the WSGI examples above
+""  
+"## Alternative: Using Bash Startup Script"  
+""  
+"If you're having issues with the WSGI configuration, you can use the provided bash script:"  
+""  
+"1. Make the script executable:"  
+'```bash'  
+"chmod +x start_pythonanywhere.sh"  
+'```'  
+""  
+"2. Update your WSGI file to use the bash script:"  
+'```python'  
+"import os"  
+"import sys"  
+"import subprocess"  
+""  
+"sys.path.insert(0, '/home/yourusername/telegram-longchat-bot')"  
+"os.chdir('/home/yourusername/telegram-longchat-bot')"  
+""  
+"# Set environment variables here or in PythonAnywhere web app config"  
+"os.environ['NODE_ENV'] = 'production'"  
+"os.environ['PORT'] = '8080'"  
+""  
+"# Start using bash script"  
+"from subprocess import Popen"  
+"Popen(['bash', 'start_pythonanywhere.sh'])"  
+'```' 
