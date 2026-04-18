@@ -18,6 +18,10 @@ const config = {
   // File system
   outputDir: process.env.OUTPUT_DIR || path.join(__dirname, '..', 'outputs'),
   
+  // Deployment environment
+  nodeEnv: process.env.NODE_ENV || 'development',
+  isProduction: process.env.NODE_ENV === 'production',
+  
   // Modes configuration
   modes: {
     script: {
@@ -69,14 +73,26 @@ Output should be clear, well-formatted, and ready for immediate use.`,
   }
 };
 
-// Validate required configuration
+// Validate required configuration with deployment-friendly approach
+config.isConfigured = !!config.botToken;
+
 if (!config.botToken) {
-  console.error('ERROR: BOT_TOKEN is required in .env file');
-  process.exit(1);
+  console.warn('⚠️  WARNING: BOT_TOKEN is not set. The bot will not start until configured.');
+  console.warn('   Set BOT_TOKEN environment variable or add to .env file');
+  console.warn('   Get token from @BotFather on Telegram');
 }
 
 if (!config.longchatApiKey) {
-  console.warn('WARNING: LONGCHAT_API_KEY is not set. API calls will fail.');
+  console.warn('⚠️  WARNING: LONGCHAT_API_KEY is not set. API calls will use mock responses.');
+  console.warn('   Get API key from https://platform.longcat.chat');
 }
+
+// Log configuration status
+console.log(`📋 Configuration Status:`);
+console.log(`   Environment: ${config.nodeEnv}`);
+console.log(`   Bot Token: ${config.botToken ? 'Configured' : 'Missing'}`);
+console.log(`   API Key: ${config.longchatApiKey ? 'Configured' : 'Missing (using mock)'}`);
+console.log(`   Rate Limit: ${config.maxRequestsPerMinute}/min`);
+console.log(`   Output Dir: ${config.outputDir}`);
 
 module.exports = config;

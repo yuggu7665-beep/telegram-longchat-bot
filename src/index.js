@@ -7,14 +7,37 @@ const healthServer = require('./health');
 
 class TelegramBot {
   constructor() {
-    this.bot = new Telegraf(config.botToken);
-    this.botService = new BotService();
-    this.commandHandler = new CommandHandler(this.botService);
-    this.rateLimiter = new RateLimiter(config.maxRequestsPerMinute);
+    // Check if bot token is configured
+    if (!config.botToken || config.botToken === 'dummy_token_for_testing') {
+      console.error('❌ BOT_TOKEN is not properly configured.');
+      console.error('   Please set BOT_TOKEN environment variable.');
+      console.error('   Get token from @BotFather on Telegram.');
+      
+      // In production, we might want to exit, but for Railway we should
+      // keep the container running and wait for configuration
+      if (config.isProduction) {
+        console.error('   Container will remain running but bot will not start.');
+        this.bot = null;
+        return;
+      }
+    }
     
-    this.setupMiddlewares();
-    this.setupCommands();
-    this.setupErrorHandling();
+    try {
+      this.bot = new Telegraf(config.botToken);
+      this.botService = new BotService();
+      this.commandHandler = new CommandHandler(this.botService);
+      this.rateLimiter = new RateLimiter(config.maxRequestsPerMinute);
+      
+      this.setupMiddlewares();
+      this.setupCommands();
+      this.setupErrorHandling();
+      
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('❌ Failed to initialize Telegram bot:', error.message);
+      this.bot = null;
+      this.isInitialized = false;
+    }
   }
 
   setupMiddlewares() {
@@ -132,17 +155,39 @@ Examples:
   }
 
   async start() {
+    // Check if bot is initialized
+    if (!this.bot || !this.isInitialized) {
+      console.error('❌ Bot cannot start: BOT_TOKEN is not configured.');
+      console.error('   Please set BOT_TOKEN environment variable in Railway.');
+      console.error('   Go to Railway Dashboard → Your Project → Variables');
+      console.error('   Add BOT_TOKEN with your Telegram bot token.');
+      
+      // Keep the health server running for configuration
+      console.log('🩺 Health server is running for configuration checks.');
+      return;
+    }
+    
     try {
       console.log('🤖 Starting Telegram Bot...');
+      console.log(`   Environment: ${config.nodeEnv}`);
+      console.log(`   Rate Limit: ${config.maxRequestsPerMinute} requests/min`);
+      console.log(`   API Mode: ${config.longchatApiKey ? 'Live' : 'Mock'}`);
+      
       await this.bot.launch();
       console.log('✅ Bot is running!');
+      console.log('📱 Connect with your Telegram client and send /start');
       
       // Enable graceful stop
       process.once('SIGINT', () => this.bot.stop('SIGINT'));
       process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
     } catch (error) {
-      console.error('Failed to start bot:', error);
-      process.exit(1);
+      console.error('❌ Failed to start bot:', error.message);
+      console.error('   Check your BOT_TOKEN and internet connection.');
+      
+      // Don't exit in production - keep container running for debugging
+      if (!config.isProduction) {
+        process.exit(1);
+      }
     }
   }
 }
