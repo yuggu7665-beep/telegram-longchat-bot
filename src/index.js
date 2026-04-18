@@ -6,9 +6,15 @@ const RateLimiter = require('./utils/rateLimiter');
 
 // Conditionally load health server (may fail if express not installed)
 let healthServer = null;
+let healthApp = null;
 try {
-  healthServer = require('./health');
+  const healthModule = require('./health');
+  healthServer = healthModule.server || null;
+  healthApp = healthModule.app || healthModule;
   console.log('✅ Health server module loaded');
+  if (healthServer) {
+    console.log('   Health server is running on port', process.env.PORT || 3000);
+  }
 } catch (error) {
   console.warn('⚠️  Health server not available:', error.message);
   console.warn('   Express module may not be installed. Health endpoints disabled.');

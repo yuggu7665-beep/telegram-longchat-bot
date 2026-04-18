@@ -47,10 +47,23 @@ app.get('/status', (req, res) => {
 });
 
 // Start health check server only if not in test environment
-if (process.env.NODE_ENV !== 'test' && require.main === module) {
-  app.listen(port, () => {
-    console.log(`Health check server running on port ${port}`);
-  });
+// For PythonAnywhere/Heroku/Railway, we need the server to start when imported
+if (process.env.NODE_ENV !== 'test') {
+  // Check if we're in a production environment or if server should always start
+  const shouldStartServer = process.env.NODE_ENV === 'production' ||
+                          process.env.ALWAYS_START_SERVER === 'true' ||
+                          require.main === module;
+  
+  if (shouldStartServer) {
+    const server = app.listen(port, () => {
+      console.log(`Health check server running on port ${port}`);
+    });
+    
+    // Export server for graceful shutdown if needed
+    module.exports = { app, server };
+  } else {
+    module.exports = { app };
+  }
+} else {
+  module.exports = { app };
 }
-
-module.exports = app;
