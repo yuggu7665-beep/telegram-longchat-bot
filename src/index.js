@@ -3,7 +3,16 @@ const config = require('./config');
 const BotService = require('./services/botService');
 const CommandHandler = require('./handlers/commandHandler');
 const RateLimiter = require('./utils/rateLimiter');
-const healthServer = require('./health');
+
+// Conditionally load health server (may fail if express not installed)
+let healthServer = null;
+try {
+  healthServer = require('./health');
+  console.log('✅ Health server module loaded');
+} catch (error) {
+  console.warn('⚠️  Health server not available:', error.message);
+  console.warn('   Express module may not be installed. Health endpoints disabled.');
+}
 
 class TelegramBot {
   constructor() {
